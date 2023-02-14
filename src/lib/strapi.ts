@@ -51,6 +51,7 @@ export interface Tour extends StrapiEntity {
     duration: number;
     rating: number;
     images: string[];
+    destination?: Destination;
 }
 
 // eslint-disable-next-line  @typescript-eslint/no-explicit-any
@@ -58,7 +59,8 @@ function decodeImage(payload: StrapiResponsePayload) {
     if (!payload?.attributes?.url) {
         return undefined;
     } else {
-        return strapiUrl + (payload.attributes as StrapiImage).url;
+        const imgUrl = (payload.attributes as StrapiImage).url;
+        return imgUrl.startsWith('http') ? imgUrl : strapiUrl + imgUrl;
     }
 }
 
@@ -92,7 +94,26 @@ export async function getToursForDestination(destination: string) {
     return data[0] ? makeTour(data[0]) : undefined;
 }
 
-function makeDestination(payload: StrapiResponsePayload) {
+export async function getTours(includeDestination = false) {
+    const populate = ['populate[images]=*'];
+    if (includeDestination) {
+        populate.push('populate[destination][populate]=*');
+    }
+    const data = await fetchStrapi(`/api/tours?${populate.join('&')}`);
+    return data.map((item) => makeTour(item));
+}
+
+export async function getTour(slug: string, includeDestination = false) {
+    const populate = ['populate[images]=*'];
+    if (includeDestination) {
+        populate.push('populate[destination][populate]=*');
+    }
+    console.log(`/api/tours?filters[slug][$eq]=${slug}&${populate.join('&')}}`);
+    const data = await fetchStrapi(`/api/tours?filters[slug][$eq]=${slug}&${populate.join('&')}`);
+    return data[0] ? makeTour(data[0]) : undefined;
+}
+
+function makeDestination(payload: StrapiResponsePayload): Destination {
     return {
         id: payload.id,
         country: payload.attributes.country,
@@ -101,7 +122,7 @@ function makeDestination(payload: StrapiResponsePayload) {
         updatedAt: new Date(payload.attributes.updatedAt as string),
         description: payload.attributes.description,
         slug: payload.attributes.slug,
-        image: decodeImage((payload.attributes.image as StrapiSingleResponse).data),
+        image: decodeImage((payload.attributes.image as StrapiSingleResponse)?.data),
         bannerImage: decodeImage((payload.attributes.bannerImage as StrapiSingleResponse)?.data),
         tours: payload.attributes.tours
             ? (payload.attributes.tours as StrapiBatchResponse).data.map((tour) => makeTour(tour))
@@ -109,7 +130,7 @@ function makeDestination(payload: StrapiResponsePayload) {
     } as Destination;
 }
 
-function makeTour(payload: StrapiResponsePayload) {
+function makeTour(payload: StrapiResponsePayload): Tour {
     return {
         id: payload.id,
         name: payload.attributes.name,
@@ -118,6 +139,9 @@ function makeTour(payload: StrapiResponsePayload) {
         price: payload.attributes.price,
         duration: payload.attributes.duration,
         rating: payload.attributes.rating,
-        images: (payload.attributes.images as StrapiBatchResponse).data.map((image) => decodeImage(image)),
+        images: (payload.attributes.images as StrapiBatchResponse)?.data.map((image) => decodeImage(image)),
+        destination: payload.attributes.destination
+            ? makeDestination((payload.attributes.destination as StrapiSingleResponse).data)
+            : undefined,
     } as Tour;
 }

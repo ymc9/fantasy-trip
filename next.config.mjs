@@ -22,7 +22,11 @@ const config = {
     },
 
     images: {
-        domains: ['localhost'],
+        domains: [
+            'localhost',
+            'zenstack-strapi-dev.s3.ap-northeast-1.amazonaws.com',
+            'zenstack-strapi.s3.ap-northeast-1.amazonaws.com',
+        ],
     },
 };
 export default config;

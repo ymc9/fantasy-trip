@@ -1,4 +1,29 @@
+import Link from 'next/link';
+
 export default function Navbar() {
+    const navItems = [
+        {
+            id: 'home',
+            label: 'HOME',
+            href: '/',
+        },
+        {
+            id: 'tours',
+            label: 'TOURS',
+            href: '/tours',
+        },
+        {
+            id: 'destinations',
+            label: 'DESTINATIONS',
+            href: '/destinations',
+        },
+        {
+            id: 'cart',
+            label: 'CART',
+            href: '/cart',
+        },
+    ];
+
     return (
         <div className="navbar bg-base-100">
             <div className="navbar-start">
@@ -23,36 +48,22 @@ export default function Navbar() {
                         tabIndex={0}
                         className="dropdown-content menu rounded-box menu-compact mt-3 w-52 bg-base-100 p-2 shadow"
                     >
-                        <li>
-                            <a>HOME</a>
-                        </li>
-                        <li>
-                            <a>DESTINATIONS</a>
-                        </li>
-                        <li>
-                            <a>ABOUT US</a>
-                        </li>
-                        <li>
-                            <a>CART</a>
-                        </li>
+                        {navItems.map((item) => (
+                            <li key={item.id}>
+                                <Link href={item.href}>{item.label}</Link>
+                            </li>
+                        ))}
                     </ul>
                 </div>
                 <a className="btn-ghost btn text-xl normal-case">FantasyTrip</a>
             </div>
             <div className="navbar-center hidden lg:flex">
                 <ul className="menu menu-horizontal px-1">
-                    <li>
-                        <a>HOME</a>
-                    </li>
-                    <li>
-                        <a>DESTINATIONS</a>
-                    </li>
-                    <li>
-                        <a>ABOUT US</a>
-                    </li>
-                    <li>
-                        <a>CART</a>
-                    </li>
+                    {navItems.map((item) => (
+                        <li key={item.id}>
+                            <Link href={item.href}>{item.label}</Link>
+                        </li>
+                    ))}
                 </ul>
             </div>
             <div className="navbar-end">

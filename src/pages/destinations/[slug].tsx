@@ -2,13 +2,13 @@ import type { GetStaticProps, NextPage } from 'next';
 import Link from 'next/link';
 import invariant from 'tiny-invariant';
 import Tour from '../../components/Tour';
-import { getDestination, getDestinations, type Destination } from '../../lib/strapi';
+import { getDestination, getDestinations, type Destination as StrapiDestination } from '../../lib/strapi';
 
 type Props = {
-    destination: Destination;
+    destination: StrapiDestination;
 };
 
-const Tours: NextPage<Props> = ({ destination }) => {
+const DestinationPage: NextPage<Props> = ({ destination }) => {
     return (
         <div className="mx-auto mt-12 flex flex-col items-center">
             <div
@@ -21,7 +21,7 @@ const Tours: NextPage<Props> = ({ destination }) => {
                 <p className="mt-10 max-w-3xl text-center text-xl text-white">{destination.description}</p>
             </div>
 
-            <div className="container flex flex-wrap justify-center gap-8 py-16">
+            <div className="container flex flex-wrap justify-start gap-8 py-16">
                 {destination.tours &&
                     destination.tours.map((tour) => (
                         <Link key={tour.id} href={`/tours/${tour.slug}`}>
@@ -33,7 +33,7 @@ const Tours: NextPage<Props> = ({ destination }) => {
     );
 };
 
-export default Tours;
+export default DestinationPage;
 
 export const getStaticProps: GetStaticProps<Props> = async ({ params }) => {
     invariant(params);
