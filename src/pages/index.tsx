@@ -1,5 +1,6 @@
 import { type NextPage } from 'next';
 import Head from 'next/head';
+import Link from 'next/link';
 import Destinations from '../components/Destinations';
 import { type Destination, getDestinations } from '../lib/strapi';
 
@@ -22,7 +23,9 @@ const Home: NextPage<Props> = ({ destinations }) => {
                         <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-[5rem]">
                             With FantasyTrip
                         </h1>
-                        <a className="btn-primary btn-lg btn">View Tours</a>
+                        <Link className="btn-primary btn-lg btn" href="/tours">
+                            View Tours
+                        </Link>
                     </div>
                 </div>
 
