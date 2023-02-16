@@ -10,6 +10,7 @@
         "postinstall": "prisma generate",
         "lint": "next lint",
         "start": "next start",
+        "vercel-build": "npm run generate && npm run build && prisma migrate deploy",
         "up": "npm i zenstack@canary && npm i @zenstackhq/runtime@canary @zenstackhq/next@canary @zenstackhq/react@canary"
     },
     "dependencies": {
