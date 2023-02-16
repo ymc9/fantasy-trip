@@ -1,7 +1,7 @@
 import { type NextPage } from 'next';
 import Link from 'next/link';
 import Tour from '../../components/Tour';
-import { type Tour as StrapiTour, getTours } from '../../lib/strapi';
+import { type Tour as StrapiTour, getTours } from '../../lib/tour';
 
 type Props = {
     tours: StrapiTour[];
@@ -31,7 +31,7 @@ const ToursPage: NextPage<Props> = ({ tours }) => {
 export default ToursPage;
 
 export async function getStaticProps() {
-    const tours = await getTours(true);
+    const tours = await getTours(undefined, true);
     return {
         props: { tours },
     };

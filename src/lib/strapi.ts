@@ -1,4 +1,5 @@
 import invariant from 'tiny-invariant';
+import useSWR from 'swr';
 
 invariant(process.env.NEXT_PUBLIC_STRAPI_API_URL, 'Missing NEXT_PUBLIC_STRAPI_API_URL');
 const strapiUrl = process.env.NEXT_PUBLIC_STRAPI_API_URL;
@@ -32,30 +33,8 @@ export interface StrapiImage extends Record<string, unknown> {
     updatedAt: Date;
 }
 
-export interface Destination extends StrapiEntity {
-    country: string;
-    city: string;
-    description: string;
-    slug: string;
-    image: string;
-    bannerImage: string;
-    tours?: Tour[];
-}
-
-export interface Tour extends StrapiEntity {
-    id: number;
-    name: string;
-    description: string;
-    slug: string;
-    price: number;
-    duration: number;
-    rating: number;
-    images: string[];
-    destination?: Destination;
-}
-
 // eslint-disable-next-line  @typescript-eslint/no-explicit-any
-function decodeImage(payload: StrapiResponsePayload) {
+export function decodeImage(payload: StrapiResponsePayload) {
     if (!payload?.attributes?.url) {
         return undefined;
     } else {
@@ -64,84 +43,13 @@ function decodeImage(payload: StrapiResponsePayload) {
     }
 }
 
-async function fetchStrapi(path: string) {
+export async function fetchStrapi(path: string) {
     const res = await fetch(`${strapiUrl}${path}`);
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const { data }: StrapiBatchResponse = await res.json();
     return data;
 }
 
-export async function getDestinations(includeTours = false) {
-    const populate = ['populate[image]=*', 'populate[bannerImage]=*'];
-    if (includeTours) {
-        populate.push('populate[tours][populate]=*');
-    }
-    const data = await fetchStrapi(`/api/destinations?${populate.join('&')}}`);
-    return data.map((item) => makeDestination(item));
-}
-
-export async function getDestination(slug: string, includeTours = false) {
-    const populate = ['populate[image]=*', 'populate[bannerImage]=*'];
-    if (includeTours) {
-        populate.push('populate[tours][populate]=*');
-    }
-    const data = await fetchStrapi(`/api/destinations?filters[slug][$eq]=${slug}&${populate.join('&')}`);
-    return data[0] ? makeDestination(data[0]) : undefined;
-}
-
-export async function getToursForDestination(destination: string) {
-    const data = await fetchStrapi(`/api/tours?filters[destination][slug][$eq]=${destination}&populate=images`);
-    return data[0] ? makeTour(data[0]) : undefined;
-}
-
-export async function getTours(includeDestination = false) {
-    const populate = ['populate[images]=*'];
-    if (includeDestination) {
-        populate.push('populate[destination][populate]=*');
-    }
-    const data = await fetchStrapi(`/api/tours?${populate.join('&')}`);
-    return data.map((item) => makeTour(item));
-}
-
-export async function getTour(slug: string, includeDestination = false) {
-    const populate = ['populate[images]=*'];
-    if (includeDestination) {
-        populate.push('populate[destination][populate]=*');
-    }
-    console.log(`/api/tours?filters[slug][$eq]=${slug}&${populate.join('&')}}`);
-    const data = await fetchStrapi(`/api/tours?filters[slug][$eq]=${slug}&${populate.join('&')}`);
-    return data[0] ? makeTour(data[0]) : undefined;
-}
-
-function makeDestination(payload: StrapiResponsePayload): Destination {
-    return {
-        id: payload.id,
-        country: payload.attributes.country,
-        city: payload.attributes.city,
-        createdAt: new Date(payload.attributes.createdAt as string),
-        updatedAt: new Date(payload.attributes.updatedAt as string),
-        description: payload.attributes.description,
-        slug: payload.attributes.slug,
-        image: decodeImage((payload.attributes.image as StrapiSingleResponse)?.data),
-        bannerImage: decodeImage((payload.attributes.bannerImage as StrapiSingleResponse)?.data),
-        tours: payload.attributes.tours
-            ? (payload.attributes.tours as StrapiBatchResponse).data.map((tour) => makeTour(tour))
-            : undefined,
-    } as Destination;
-}
-
-function makeTour(payload: StrapiResponsePayload): Tour {
-    return {
-        id: payload.id,
-        name: payload.attributes.name,
-        description: payload.attributes.description,
-        slug: payload.attributes.slug,
-        price: payload.attributes.price,
-        duration: payload.attributes.duration,
-        rating: payload.attributes.rating,
-        images: (payload.attributes.images as StrapiBatchResponse)?.data.map((image) => decodeImage(image)),
-        destination: payload.attributes.destination
-            ? makeDestination((payload.attributes.destination as StrapiSingleResponse).data)
-            : undefined,
-    } as Tour;
+export function useStrapi(path: string) {
+    return useSWR(path, fetchStrapi);
 }

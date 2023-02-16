@@ -1,0 +1,120 @@
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+plugin react {
+    provider = "@zenstackhq/react"
+    output = "src/lib/hooks"
+}
+
+enum OrderStatus {
+    DRAFT
+    PAID
+    CONFIRMED
+}
+
+model Customer {
+    id String @id @default(cuid())
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+    firstName String
+    lastName String
+    email String
+    cart Cart?
+    orders Order[]
+    @@allow('create', true)
+    @@allow('all', auth() == this)
+}
+
+model Cart {
+    id String @id @default(cuid())
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+    customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+    customerId String @unique
+    items CartItem[]
+    @@allow('all', auth() == customer)
+}
+
+model CartItem {
+    id String @id @default(cuid())
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+    tour String
+    date DateTime
+    quantity Int
+    cart Cart @relation(fields: [cartId], references: [id])
+    cartId String
+    @@allow('all', auth() == cart.customer)
+}
+
+model Order {
+    id String @id @default(cuid())
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+    customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+    customerId String
+    items OrderItem[]
+    status OrderStatus
+    @@allow('create,read', auth() == customer)
+}
+
+model OrderItem {
+    id String @id @default(cuid())
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+    tour String
+    date DateTime
+    quantity Int
+    order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+    orderId String
+    @@allow('create,read', auth() == order.customer)
+}
+
+// Necessary for Next auth
+model Account {
+    id String @id @default(cuid())
+    userId String
+    type String
+    provider String
+    providerAccountId String
+    refresh_token String?
+    access_token String?
+    expires_at Int?
+    token_type String?
+    scope String?
+    id_token String?
+    session_state String?
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+    @@unique([provider, providerAccountId])
+}
+
+model Session {
+    id String @id @default(cuid())
+    sessionToken String @unique
+    userId String
+    expires DateTime
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+    id String @id @default(cuid())
+    name String?
+    email String? @unique
+    emailVerified DateTime?
+    image String?
+    accounts Account[]
+    sessions Session[]
+}
+
+model VerificationToken {
+    identifier String
+    token String @unique
+    expires DateTime
+    @@unique([identifier, token])
+}

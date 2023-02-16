@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import type { Destination as StrapiDestination } from '../lib/strapi';
+import type { Destination as StrapiDestination } from '../lib/destination';
 
 type Props = {
     destinations: StrapiDestination[];

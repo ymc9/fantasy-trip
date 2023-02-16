@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import type { Tour as StrapiTour } from '../lib/strapi';
+import type { Tour as StrapiTour } from '../lib/tour';
 import Rating from './Rating';
 
 type Props = {

@@ -2,7 +2,7 @@ import type { GetStaticProps, NextPage } from 'next';
 import Link from 'next/link';
 import invariant from 'tiny-invariant';
 import Tour from '../../components/Tour';
-import { getDestination, getDestinations, type Destination as StrapiDestination } from '../../lib/strapi';
+import { getDestination, getDestinations, type Destination as StrapiDestination } from '../../lib/destination';
 
 type Props = {
     destination: StrapiDestination;

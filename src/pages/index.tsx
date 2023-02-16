@@ -2,7 +2,7 @@ import { type NextPage } from 'next';
 import Head from 'next/head';
 import Link from 'next/link';
 import Destinations from '../components/Destinations';
-import { type Destination, getDestinations } from '../lib/strapi';
+import { type Destination, getDestinations } from '../lib/destination';
 
 type Props = {
     destinations: Destination[];
