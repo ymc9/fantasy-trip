@@ -23,15 +23,16 @@
         "@trpc/next": "^10.9.0",
         "@trpc/react-query": "^10.9.0",
         "@trpc/server": "^10.9.0",
-        "@zenstackhq/next": "^1.0.0-alpha.36",
-        "@zenstackhq/react": "^1.0.0-alpha.36",
-        "@zenstackhq/runtime": "^1.0.0-alpha.36",
+        "@zenstackhq/next": "^1.0.0-alpha.42",
+        "@zenstackhq/react": "^1.0.0-alpha.42",
+        "@zenstackhq/runtime": "^1.0.0-alpha.42",
         "babel-plugin-superjson-next": "^0.4.5",
         "daisyui": "^2.50.0",
         "dayjs": "^1.11.7",
         "js-cookie": "^3.0.1",
         "next": "13.1.6",
         "next-auth": "^4.19.0",
+        "pluralize": "^8.0.0",
         "react": "18.2.0",
         "react-dom": "18.2.0",
         "react-hook-form": "^7.43.1",
@@ -48,6 +49,7 @@
         "@tailwindcss/typography": "^0.5.9",
         "@types/js-cookie": "^3.0.2",
         "@types/node": "^18.11.18",
+        "@types/pluralize": "^0.0.29",
         "@types/prettier": "^2.7.2",
         "@types/react": "^18.0.26",
         "@types/react-dom": "^18.0.10",
@@ -62,7 +64,7 @@
         "prisma": "^4.9.0",
         "tailwindcss": "^3.2.0",
         "typescript": "^4.9.4",
-        "zenstack": "^1.0.0-alpha.36"
+        "zenstack": "^1.0.0-alpha.42"
     },
     "ct3aMetadata": {
         "initVersion": "7.5.1"

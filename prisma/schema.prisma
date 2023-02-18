@@ -55,7 +55,7 @@ model CartItem {
     tour String
     date DateTime
     quantity Int
-    cart Cart @relation(fields: [cartId], references: [id])
+    cart Cart @relation(fields: [cartId], references: [id], onDelete: Cascade)
     cartId String
     zenstack_guard Boolean @default(true)
     zenstack_transaction String?
@@ -70,7 +70,7 @@ model Order {
     customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
     customerId String
     items OrderItem[]
-    status OrderStatus
+    status OrderStatus @default(DRAFT)
     zenstack_guard Boolean @default(true)
     zenstack_transaction String?
     @@index([zenstack_transaction])

@@ -10,7 +10,7 @@ type Props = {
 
 const DestinationPage: NextPage<Props> = ({ destination }) => {
     return (
-        <div className="mx-auto mt-12 flex flex-col items-center">
+        <div className="mx-auto flex flex-col items-center">
             <div
                 className="mx-auto flex w-full flex-col items-center justify-center bg-center py-40 shadow-xl"
                 style={{ backgroundImage: `url(${destination.bannerImage})` }}

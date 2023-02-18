@@ -1,20 +1,21 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
 /* eslint-disable @next/next/no-img-element */
+import { createId } from '@paralleldrive/cuid2';
 import dayjs from 'dayjs';
+import Cookies from 'js-cookie';
 import type { GetStaticProps, NextPage } from 'next';
 import Link from 'next/link';
-import { type SubmitHandler, useForm } from 'react-hook-form';
+import { useRouter } from 'next/router';
+import { useEffect, useState } from 'react';
+import { useForm, type SubmitHandler } from 'react-hook-form';
 import { FaRegClock } from 'react-icons/fa';
 import ReactMarkdown from 'react-markdown';
 import { Carousel } from 'react-responsive-carousel';
 import 'react-responsive-carousel/lib/styles/carousel.min.css';
 import invariant from 'tiny-invariant';
-import { useCart, useCustomer } from '../../lib/hooks';
+import { CUSTOMER_ID_COOKIE } from '../../lib/customer';
+import { useCart, useCartItem, useCustomer } from '../../lib/hooks';
 import { getTour, getTours, type Tour as StrapiTour } from '../../lib/tour';
-import { createId } from '@paralleldrive/cuid2';
-import Cookies from 'js-cookie';
-import Router from 'next/router';
-import { useEffect } from 'react';
 
 type Props = {
     tour: StrapiTour;
@@ -31,26 +32,66 @@ type Inputs = {
 const TourPage: NextPage<Props> = ({ tour }) => {
     invariant(tour.destination);
 
-    const { register, reset, handleSubmit } = useForm<Inputs>({
+    const {
+        register,
+        reset: resetForm,
+        getValues: getFormValues,
+        handleSubmit,
+    } = useForm<Inputs>({
         defaultValues: {
             quantity: 1,
             date: dayjs().add(1, 'day').format('YYYY-MM-DD'),
         },
     });
 
-    const { findFirst: loadCustomer, update: updateCustomer } = useCustomer();
+    const router = useRouter();
+    const [customerId, setCustomerId] = useState('');
+    const [cartItemId, setCartItemId] = useState('');
 
-    const { data: me } = loadCustomer({});
+    const { findUnique: loadCustomer, update: updateCustomer } = useCustomer();
     const { upsert: upsertCart, create: createCart } = useCart();
+    const { findUnique: loadCartItem, update: updateCartItem } = useCartItem();
+
+    const { data: cartItem } = loadCartItem({ where: { id: cartItemId } }, { disabled: !cartItemId });
+    const { data: me, isLoading: loadingMe } = loadCustomer({ where: { id: customerId } }, { disabled: !customerId });
 
     useEffect(() => {
-        if (me) {
-            console.log('Customer loaded:', me);
-            reset({ firstName: me.firstName, lastName: me.lastName, email: me.email });
+        const cid = Cookies.get(CUSTOMER_ID_COOKIE);
+        if (cid) {
+            setCustomerId(cid);
         }
-    }, [reset, me]);
+    }, []);
 
-    const onAddCart: SubmitHandler<Inputs> = async (data) => {
+    useEffect(() => {
+        if (router.query.cartRef) {
+            // editing a cart item
+            setCartItemId(router.query.cartRef as string);
+        }
+    }, [router]);
+
+    useEffect(() => {
+        if (customerId && !loadingMe) {
+            if (me) {
+                console.log('Customer loaded:', me);
+                resetForm({ ...getFormValues(), firstName: me.firstName, lastName: me.lastName, email: me.email });
+            } else {
+                console.log('Removing customer id cookie');
+                Cookies.remove(CUSTOMER_ID_COOKIE);
+            }
+        }
+    }, [resetForm, getFormValues, me, loadingMe, customerId]);
+
+    useEffect(() => {
+        if (cartItem) {
+            resetForm({
+                ...getFormValues(),
+                quantity: cartItem.quantity,
+                date: dayjs(cartItem.date).format('YYYY-MM-DD'),
+            });
+        }
+    }, [cartItem, resetForm, getFormValues]);
+
+    const onSubmitCart: SubmitHandler<Inputs> = async (data) => {
         const customer = { firstName: data.firstName, lastName: data.lastName, email: data.email };
         const item = {
             tour: tour.slug,
@@ -58,56 +99,72 @@ const TourPage: NextPage<Props> = ({ tour }) => {
             quantity: data.quantity,
         };
 
-        console.log('Adding cart, customer:', customer, 'item:', item);
+        if (me && cartItem) {
+            console.log('Updating cart', cartItemId, 'cusomer:', customer, 'item:', item);
 
-        if (me) {
             // update customer
             await updateCustomer({
                 where: { id: me.id },
                 data: customer,
             });
 
-            // update customer's cart
-            await upsertCart({
-                where: {
-                    customerId: me.id,
-                },
-                create: {
-                    customer: {
-                        connect: { id: me.id },
-                    },
-                    items: {
-                        create: item,
-                    },
-                },
-                update: {
-                    items: {
-                        create: item,
-                    },
-                },
+            // update cart item
+            await updateCartItem({
+                where: { id: cartItemId },
+                data: item,
             });
         } else {
-            // create a new customer and cart
-            const customerId = createId();
-            await createCart({
-                data: {
-                    customer: {
-                        create: { id: customerId, ...customer },
-                    },
-                    items: {
-                        create: item,
-                    },
-                },
-            });
+            console.log('Adding cart, customer:', customer, 'item:', item);
 
-            Cookies.set('ft-customer-id', customerId, { expires: 365, path: '/' });
+            if (me) {
+                // update customer
+                await updateCustomer({
+                    where: { id: me.id },
+                    data: customer,
+                });
+
+                // update customer's cart
+                await upsertCart({
+                    where: {
+                        customerId: me.id,
+                    },
+                    create: {
+                        customer: {
+                            connect: { id: me.id },
+                        },
+                        items: {
+                            create: item,
+                        },
+                    },
+                    update: {
+                        items: {
+                            create: item,
+                        },
+                    },
+                });
+            } else {
+                // create a new customer and cart
+                const customerId = createId();
+                await createCart({
+                    data: {
+                        customer: {
+                            create: { id: customerId, ...customer },
+                        },
+                        items: {
+                            create: item,
+                        },
+                    },
+                });
+
+                Cookies.set(CUSTOMER_ID_COOKIE, customerId, { expires: 365, path: '/' });
+            }
         }
 
-        await Router.push('/cart');
+        await router.push('/cart');
     };
 
     return (
-        <div className="mx-auto my-12 flex flex-col items-center">
+        <div className="mx-auto flex flex-col items-center">
             <div
                 className="mx-auto flex w-full flex-col items-center justify-center bg-cover bg-center py-40 shadow-xl"
                 style={{
@@ -115,8 +172,8 @@ const TourPage: NextPage<Props> = ({ tour }) => {
                 }}
             ></div>
 
-            <div className="container mx-auto flex flex-col items-center">
-                <h1 className="mt-16 self-start text-left text-4xl font-semibold">{tour.name}</h1>
+            <div className="container mx-auto flex flex-col items-center pb-16">
+                <h1 className="mt-12 self-start text-left text-4xl font-semibold">{tour.name}</h1>
                 <div className="divider" />
 
                 <div className="mt-8 flex w-full justify-center">
@@ -153,7 +210,7 @@ const TourPage: NextPage<Props> = ({ tour }) => {
                     <div className="p-8">
                         <p>${tour.price.toFixed(2)}</p>
 
-                        <form className="form-control" onSubmit={handleSubmit(onAddCart)}>
+                        <form className="form-control" onSubmit={handleSubmit(onSubmitCart)}>
                             <label className="label">
                                 <span className="label-text">First Name</span>
                             </label>
@@ -205,7 +262,11 @@ const TourPage: NextPage<Props> = ({ tour }) => {
                                 {...register('quantity', { valueAsNumber: true })}
                             />
 
-                            <input type="submit" className="btn-primary btn mt-4" />
+                            <input
+                                type="submit"
+                                className="btn-primary btn mt-4"
+                                value={cartItem ? 'Update cart' : 'Add to cart'}
+                            />
                         </form>
                     </div>
                 </div>

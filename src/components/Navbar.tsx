@@ -25,7 +25,7 @@ export default function Navbar() {
     ];
 
     return (
-        <div className="navbar bg-base-100">
+        <div className="navbar border-b bg-base-100 px-8 shadow-sm">
             <div className="navbar-start">
                 <div className="dropdown">
                     <label tabIndex={0} className="btn-ghost btn lg:hidden">
@@ -55,7 +55,9 @@ export default function Navbar() {
                         ))}
                     </ul>
                 </div>
-                <a className="btn-ghost btn text-xl normal-case">FantasyTrip</a>
+                <Link href="/" className="text-xl font-semibold normal-case">
+                    FantasyTrip
+                </Link>
             </div>
             <div className="navbar-center hidden lg:flex">
                 <ul className="menu menu-horizontal px-1">
@@ -67,7 +69,7 @@ export default function Navbar() {
                 </ul>
             </div>
             <div className="navbar-end">
-                <a href="tel:+11234567890">📞 +1 123 456 7890</a>
+                <a href="tel:+11234567890">📞 Call Us</a>
             </div>
         </div>
     );

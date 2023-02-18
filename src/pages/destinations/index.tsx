@@ -17,7 +17,7 @@ const DestinationsPage: NextPage<Props> = ({ destinations }) => {
                 </div>
             </div>
             <div className="container mx-auto flex flex-col">
-                <div className="mt-12 flex w-full flex-wrap justify-start gap-4">
+                <div className="my-16 flex w-full flex-wrap justify-start gap-4">
                     {destinations.map((dst) => (
                         <Link key={dst.id} href={`/destinations/${dst.slug}`}>
                             <div
