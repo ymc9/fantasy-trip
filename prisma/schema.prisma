@@ -63,6 +63,7 @@ model CartItem {
 }
 
 /// @@allow('create,read', auth() == customer)
+/// @@allow('update,delete', auth() == customer && status == DRAFT)
 model Order {
     id String @id() @default(cuid())
     createdAt DateTime @default(now())
@@ -71,6 +72,7 @@ model Order {
     customerId String
     items OrderItem[]
     status OrderStatus @default(DRAFT)
+    captureDetails Json?
     zenstack_guard Boolean @default(true)
     zenstack_transaction String?
     @@index([zenstack_transaction])

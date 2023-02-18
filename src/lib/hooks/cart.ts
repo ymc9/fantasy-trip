@@ -13,7 +13,7 @@ export function useCart() {
         try {
             return await request.post<Prisma.SelectSubset<T, Prisma.CartCreateArgs>, Prisma.CheckSelect<T, Cart, Prisma.CartGetPayload<T>>>(`${endpoint}/cart/create`, args, mutate);
         } catch (err: any) {
-            if (err.info?.prisma && err.info?.code === 'P2004') {
+            if (err.info?.prisma && err.info?.code === 'P2004' && err.info?.extra === 'RESULT_NOT_READABLE') {
                 // unable to readback data
                 return undefined;
             } else {
@@ -42,7 +42,7 @@ export function useCart() {
         try {
             return await request.put<Prisma.SelectSubset<T, Prisma.CartUpdateArgs>, Prisma.CartGetPayload<T>>(`${endpoint}/cart/update`, args, mutate);
         } catch (err: any) {
-            if (err.info?.prisma && err.info?.code === 'P2004') {
+            if (err.info?.prisma && err.info?.code === 'P2004' && err.info?.extra === 'RESULT_NOT_READABLE') {
                 // unable to readback data
                 return undefined;
             } else {
@@ -59,7 +59,7 @@ export function useCart() {
         try {
             return await request.post<Prisma.SelectSubset<T, Prisma.CartUpsertArgs>, Prisma.CartGetPayload<T>>(`${endpoint}/cart/upsert`, args, mutate);
         } catch (err: any) {
-            if (err.info?.prisma && err.info?.code === 'P2004') {
+            if (err.info?.prisma && err.info?.code === 'P2004' && err.info?.extra === 'RESULT_NOT_READABLE') {
                 // unable to readback data
                 return undefined;
             } else {
@@ -72,7 +72,7 @@ export function useCart() {
         try {
             return await request.del<Prisma.CartGetPayload<T>>(`${endpoint}/cart/delete`, args, mutate);
         } catch (err: any) {
-            if (err.info?.prisma && err.info?.code === 'P2004') {
+            if (err.info?.prisma && err.info?.code === 'P2004' && err.info?.extra === 'RESULT_NOT_READABLE') {
                 // unable to readback data
                 return undefined;
             } else {

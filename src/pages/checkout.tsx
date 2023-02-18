@@ -1,13 +1,14 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
+import { PayPalButtons } from '@paypal/react-paypal-js';
 import { OrderStatus, type Customer } from '@prisma/client';
-import { withPresets } from '@zenstackhq/runtime';
 import dayjs from 'dayjs';
 import type { GetServerSideProps, NextPage } from 'next';
-import { useEffect } from 'react';
+import Router from 'next/router';
 import { useForm, type SubmitHandler } from 'react-hook-form';
-import { CUSTOMER_ID_COOKIE, useCurrentCustomer } from '../lib/customer';
+import invariant from 'tiny-invariant';
+import { useCustomer, useOrder } from '../lib/hooks';
 import { fillOrderTours, useMyOrder, type OrderInfo, type OrderItemInfo } from '../lib/order';
-import { prisma } from '../server/db';
+import { getCustomerDb } from '../server/customer-db';
 
 type Inputs = {
     firstName: string;
@@ -34,19 +35,27 @@ const LineItem = ({ item }: { item: OrderItemInfo }) => {
     );
 };
 
-const CheckoutPage: NextPage<Props> = ({ order: initOrder }) => {
-    const { data: me } = useCurrentCustomer();
-    const { data: order } = useMyOrder(initOrder);
-    const { register, reset: resetForm, handleSubmit } = useForm<Inputs>();
+const CheckoutPage: NextPage<Props> = ({ customer, order: initOrder }) => {
+    const { data: order, mutate: mutateOrder } = useMyOrder(initOrder);
+    const { update: updateOrder, del: deleteOrder } = useOrder();
+    const { update: updateCustomer } = useCustomer();
+    const { register, handleSubmit } = useForm<Inputs>({
+        defaultValues: { firstName: customer?.firstName, lastName: customer?.lastName, email: customer?.email },
+    });
 
-    useEffect(() => {
-        if (me) {
-            resetForm({ firstName: me.firstName, lastName: me.lastName, email: me.email });
-        }
-    }, [me, resetForm]);
+    const onSaveContact: SubmitHandler<Inputs> = async (data) => {
+        invariant(customer);
+        await updateCustomer({
+            where: { id: customer?.id },
+            data,
+        });
+        await mutateOrder();
+    };
 
-    const onProceedPayment: SubmitHandler<Inputs> = async (data) => {
-        console.log(data);
+    const onDiscardOrder = async () => {
+        invariant(order);
+        await deleteOrder({ where: { id: order.id } });
+        await Router.push('/tours');
     };
 
     const getOrderTotal = () => {
@@ -54,6 +63,17 @@ const CheckoutPage: NextPage<Props> = ({ order: initOrder }) => {
             return 0;
         }
         return order.items.reduce((acc, item) => acc + item.tour.price * item.quantity, 0) || 0;
+    };
+
+    const setOrderCompleted = async (details: object) => {
+        invariant(order);
+        await updateOrder({
+            where: { id: order.id },
+            data: {
+                status: OrderStatus.PAID,
+                captureDetails: details,
+            },
+        });
     };
 
     return (
@@ -65,7 +85,7 @@ const CheckoutPage: NextPage<Props> = ({ order: initOrder }) => {
                 <div className="flex items-start justify-center gap-8">
                     <div className="flex w-96 flex-col rounded-lg border p-8">
                         <h2 className="mb-4 text-2xl font-semibold">Contact Information</h2>
-                        <form className="form-control w-full" onSubmit={handleSubmit(onProceedPayment)}>
+                        <form className="form-control w-full" onSubmit={handleSubmit(onSaveContact)}>
                             <label className="label">
                                 <span className="label-text">First Name</span>
                             </label>
@@ -93,8 +113,7 @@ const CheckoutPage: NextPage<Props> = ({ order: initOrder }) => {
                                 className="input-bordered input w-full max-w-xs"
                                 {...register('email')}
                             />
-                            <input type="submit" className="btn-primary btn mt-4" value="Proceed to Payment" />
-                            <button className="btn-outline btn mt-2">Discard Order</button>
+                            <input type="submit" className="btn-primary btn mt-4" value="Save Contact Info" />
                         </form>
                     </div>
                     <div className="flex flex-col gap-4 rounded-lg border p-8">
@@ -107,6 +126,37 @@ const CheckoutPage: NextPage<Props> = ({ order: initOrder }) => {
                                 <LineItem key={item.id} item={item} />
                             ))}
                         </div>
+
+                        <PayPalButtons
+                            className="mt-4"
+                            style={{ layout: 'horizontal', label: 'checkout', tagline: false, height: 40 }}
+                            createOrder={(data, actions) => {
+                                console.log('Creating Paypal order:', getOrderTotal());
+                                return actions.order.create({
+                                    purchase_units: [
+                                        {
+                                            amount: {
+                                                value: getOrderTotal().toString(),
+                                            },
+                                        },
+                                    ],
+                                });
+                            }}
+                            onApprove={async (data, actions) => {
+                                const details = await actions.order?.capture();
+                                if (details && details.status === 'COMPLETED') {
+                                    console.log('Payment captures successfully:', details);
+                                    await setOrderCompleted(details);
+                                    await Router.push('/thankyou');
+                                } else {
+                                    alert('Something went wrong during the payment process. Please try again.');
+                                }
+                            }}
+                        />
+
+                        <button className="btn-outline btn" onClick={onDiscardOrder}>
+                            Discard Order
+                        </button>
                     </div>
                 </div>
             )}
@@ -117,16 +167,8 @@ const CheckoutPage: NextPage<Props> = ({ order: initOrder }) => {
 export default CheckoutPage;
 
 export const getServerSideProps: GetServerSideProps<Props> = async ({ req }) => {
-    const customerId = req.cookies[CUSTOMER_ID_COOKIE];
-    if (!customerId) {
-        return {
-            props: { customer: null, cart: null, order: null },
-        };
-    }
-
-    const db = withPresets(prisma, { user: { id: customerId } });
-    const r = await db.customer.findUnique({
-        where: { id: customerId },
+    const db = getCustomerDb(req);
+    const r = await db.customer.findFirst({
         include: {
             orders: {
                 include: { items: true },

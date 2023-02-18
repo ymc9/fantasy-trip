@@ -6,13 +6,15 @@ import { getTour, type Tour as StrapiTour } from './tour';
 
 export type CartItemInfo = Omit<CartItem, 'tour'> & { tour: StrapiTour };
 
-export interface CartInfo {
+export interface CartInfo extends Omit<Cart, 'items'> {
     items: CartItemInfo[];
 }
 
 export async function fillCartTours(cart: Cart & { items: CartItem[] }) {
-    const itemTours = await Promise.all(cart.items.map(async (item) => ({ item, tour: await getTour(item.tour) })));
+    const { items, ...rest } = cart;
+    const itemTours = await Promise.all(items.map(async (item) => ({ item, tour: await getTour(item.tour) })));
     return {
+        ...rest,
         items: itemTours
             .filter(({ tour }) => !!tour)
             .map(({ item, tour }) => {

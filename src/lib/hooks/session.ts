@@ -13,7 +13,7 @@ export function useSession() {
         try {
             return await request.post<Prisma.SelectSubset<T, Prisma.SessionCreateArgs>, Prisma.CheckSelect<T, Session, Prisma.SessionGetPayload<T>>>(`${endpoint}/session/create`, args, mutate);
         } catch (err: any) {
-            if (err.info?.prisma && err.info?.code === 'P2004') {
+            if (err.info?.prisma && err.info?.code === 'P2004' && err.info?.extra === 'RESULT_NOT_READABLE') {
                 // unable to readback data
                 return undefined;
             } else {
@@ -42,7 +42,7 @@ export function useSession() {
         try {
             return await request.put<Prisma.SelectSubset<T, Prisma.SessionUpdateArgs>, Prisma.SessionGetPayload<T>>(`${endpoint}/session/update`, args, mutate);
         } catch (err: any) {
-            if (err.info?.prisma && err.info?.code === 'P2004') {
+            if (err.info?.prisma && err.info?.code === 'P2004' && err.info?.extra === 'RESULT_NOT_READABLE') {
                 // unable to readback data
                 return undefined;
             } else {
@@ -59,7 +59,7 @@ export function useSession() {
         try {
             return await request.post<Prisma.SelectSubset<T, Prisma.SessionUpsertArgs>, Prisma.SessionGetPayload<T>>(`${endpoint}/session/upsert`, args, mutate);
         } catch (err: any) {
-            if (err.info?.prisma && err.info?.code === 'P2004') {
+            if (err.info?.prisma && err.info?.code === 'P2004' && err.info?.extra === 'RESULT_NOT_READABLE') {
                 // unable to readback data
                 return undefined;
             } else {
@@ -72,7 +72,7 @@ export function useSession() {
         try {
             return await request.del<Prisma.SessionGetPayload<T>>(`${endpoint}/session/delete`, args, mutate);
         } catch (err: any) {
-            if (err.info?.prisma && err.info?.code === 'P2004') {
+            if (err.info?.prisma && err.info?.code === 'P2004' && err.info?.extra === 'RESULT_NOT_READABLE') {
                 // unable to readback data
                 return undefined;
             } else {

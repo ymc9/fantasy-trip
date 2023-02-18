@@ -12,6 +12,7 @@ import { fillCartTours, useMyCart, type CartInfo, type CartItemInfo } from '../l
 import { CUSTOMER_ID_COOKIE } from '../lib/customer';
 import { useCartItem, useCustomer, useOrder } from '../lib/hooks';
 import { fillOrderTours, type OrderInfo } from '../lib/order';
+import { getCustomerDb } from '../server/customer-db';
 import { prisma } from '../server/db';
 
 function CartItem({ item, onChange }: { item: CartItemInfo; onChange?: (item: CartItemInfo) => void }) {
@@ -174,16 +175,8 @@ const CartPage: NextPage<Props> = ({ customer, cart: initCart, order }) => {
 export default CartPage;
 
 export const getServerSideProps: GetServerSideProps<Props> = async ({ req }) => {
-    const customerId = req.cookies[CUSTOMER_ID_COOKIE];
-    if (!customerId) {
-        return {
-            props: { customer: null, cart: null, order: null },
-        };
-    }
-
-    const db = withPresets(prisma, { user: { id: customerId } });
-    const r = await db.customer.findUnique({
-        where: { id: customerId },
+    const db = getCustomerDb(req);
+    const r = await db.customer.findFirst({
         include: {
             cart: { include: { items: true } },
             orders: {

@@ -61,7 +61,9 @@ model Order {
     customerId String
     items OrderItem[]
     status OrderStatus @default(DRAFT)
+    captureDetails Json?
     @@allow('create,read', auth() == customer)
+    @@allow('update,delete', auth() == customer && status == DRAFT)
 }
 
 model OrderItem {

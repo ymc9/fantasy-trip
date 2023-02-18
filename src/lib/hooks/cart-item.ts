@@ -13,7 +13,7 @@ export function useCartItem() {
         try {
             return await request.post<Prisma.SelectSubset<T, Prisma.CartItemCreateArgs>, Prisma.CheckSelect<T, CartItem, Prisma.CartItemGetPayload<T>>>(`${endpoint}/cartItem/create`, args, mutate);
         } catch (err: any) {
-            if (err.info?.prisma && err.info?.code === 'P2004') {
+            if (err.info?.prisma && err.info?.code === 'P2004' && err.info?.extra === 'RESULT_NOT_READABLE') {
                 // unable to readback data
                 return undefined;
             } else {
@@ -42,7 +42,7 @@ export function useCartItem() {
         try {
             return await request.put<Prisma.SelectSubset<T, Prisma.CartItemUpdateArgs>, Prisma.CartItemGetPayload<T>>(`${endpoint}/cartItem/update`, args, mutate);
         } catch (err: any) {
-            if (err.info?.prisma && err.info?.code === 'P2004') {
+            if (err.info?.prisma && err.info?.code === 'P2004' && err.info?.extra === 'RESULT_NOT_READABLE') {
                 // unable to readback data
                 return undefined;
             } else {
@@ -59,7 +59,7 @@ export function useCartItem() {
         try {
             return await request.post<Prisma.SelectSubset<T, Prisma.CartItemUpsertArgs>, Prisma.CartItemGetPayload<T>>(`${endpoint}/cartItem/upsert`, args, mutate);
         } catch (err: any) {
-            if (err.info?.prisma && err.info?.code === 'P2004') {
+            if (err.info?.prisma && err.info?.code === 'P2004' && err.info?.extra === 'RESULT_NOT_READABLE') {
                 // unable to readback data
                 return undefined;
             } else {
@@ -72,7 +72,7 @@ export function useCartItem() {
         try {
             return await request.del<Prisma.CartItemGetPayload<T>>(`${endpoint}/cartItem/delete`, args, mutate);
         } catch (err: any) {
-            if (err.info?.prisma && err.info?.code === 'P2004') {
+            if (err.info?.prisma && err.info?.code === 'P2004' && err.info?.extra === 'RESULT_NOT_READABLE') {
                 // unable to readback data
                 return undefined;
             } else {
