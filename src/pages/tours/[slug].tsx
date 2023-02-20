@@ -291,7 +291,7 @@ const TourPage: NextPage<Props> = ({ tour }) => {
                                 type="submit"
                                 className={`btn-primary btn mt-4 ${submitting ? 'loading' : ''}`}
                                 value={cartItem ? 'Update cart' : 'Add to cart'}
-                                disabled={notAvailable}
+                                disabled={submitting}
                             />
                         </form>
                     </div>
