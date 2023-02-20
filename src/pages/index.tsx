@@ -2,13 +2,16 @@ import { type NextPage } from 'next';
 import Head from 'next/head';
 import Link from 'next/link';
 import Destinations from '../components/Destinations';
-import { type Destination, getDestinations } from '../lib/destination';
+import Tour from '../components/Tour';
+import { getDestinations, type Destination as StrapiDestination } from '../lib/destination';
+import { getTours, type Tour as StrapiTour } from '../lib/tour';
 
 type Props = {
-    destinations: Destination[];
+    destinations: StrapiDestination[];
+    tours: StrapiTour[];
 };
 
-const Home: NextPage<Props> = ({ destinations }) => {
+const Home: NextPage<Props> = ({ destinations, tours }) => {
     return (
         <>
             <Head>
@@ -29,10 +32,25 @@ const Home: NextPage<Props> = ({ destinations }) => {
                     </div>
                 </div>
 
-                <div className="container mx-auto flex flex-col items-center justify-center bg-white py-20">
-                    <h1 className="mb-12 text-3xl font-semibold">Our Destinations</h1>
-                    <div>
-                        <Destinations destinations={destinations} />
+                <div className="mx-auto flex flex-col items-center justify-center bg-white py-20">
+                    <div className="container flex w-full flex-col items-center">
+                        <h1 className="mb-12 text-3xl font-semibold">Our Destinations</h1>
+                        <div>
+                            <Destinations destinations={destinations} />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="mx-auto flex flex-col items-center justify-center bg-slate-100 py-20">
+                    <div className="container flex w-full flex-col items-center">
+                        <h1 className="mb-12 text-3xl font-semibold">Most Popular Tours</h1>
+                        <div className="flex flex-wrap justify-center gap-4">
+                            {tours.map((tour) => (
+                                <Link href={`/tours/${tour.slug}`} key={tour.slug}>
+                                    <Tour tour={tour} />
+                                </Link>
+                            ))}
+                        </div>
                     </div>
                 </div>
             </main>
@@ -44,7 +62,8 @@ export default Home;
 
 export async function getStaticProps() {
     const destinations = await getDestinations();
+    const tours = await getTours();
     return {
-        props: { destinations },
+        props: { destinations, tours },
     };
 }
