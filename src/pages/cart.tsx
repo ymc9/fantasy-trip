@@ -38,7 +38,7 @@ function CartItem({
     }
 
     return (
-        <div className="flex flex-row items-center rounded-lg border border-gray-200 py-6 px-12 shadow-lg">
+        <div className="flex w-full flex-row items-center rounded-lg border border-gray-200 py-6 px-12 shadow-lg">
             <div className="relative flex h-32 w-32">
                 {item.tour.images[0] && (
                     <Link href={`/tours/${item.tour.slug}`}>
@@ -52,9 +52,9 @@ function CartItem({
                     </Link>
                 )}
             </div>
-            <div className="flex flex-col justify-center gap-2 px-4">
+            <div className="flex w-96 flex-col justify-center gap-2 px-4">
                 <Link href={`/tours/${item.tour.slug}`}>
-                    <h2>{item.tour.name}</h2>
+                    <h2 className="line-clamp-1">{item.tour.name}</h2>
                 </Link>
                 <div className="flex flex-col gap-1 text-sm text-gray-600">
                     <div>
