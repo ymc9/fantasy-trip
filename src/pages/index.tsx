@@ -44,7 +44,7 @@ const Home: NextPage<Props> = ({ destinations, tours }) => {
                 <div className="mx-auto flex flex-col items-center justify-center bg-slate-100 py-20">
                     <div className="container flex w-full flex-col items-center">
                         <h1 className="mb-12 text-3xl font-semibold">Most Popular Tours</h1>
-                        <div className="flex flex-wrap justify-center gap-4">
+                        <div className="flex flex-wrap justify-center gap-6">
                             {tours.map((tour) => (
                                 <Link href={`/tours/${tour.slug}`} key={tour.slug}>
                                     <Tour tour={tour} />
