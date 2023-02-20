@@ -269,6 +269,7 @@ const TourPage: NextPage<Props> = ({ tour }) => {
                                         selected={field.value ? dayjs(field.value).toDate() : undefined}
                                         excludeDates={occupiedDates?.dates}
                                         minDate={dayjs().add(1, 'days').toDate()}
+                                        required
                                     />
                                 )}
                             />
