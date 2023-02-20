@@ -1,6 +1,6 @@
-import { type NextPage } from 'next';
+import type { GetStaticProps, NextPage } from 'next';
 import Link from 'next/link';
-import { type Destination as StrapiDestination, getDestinations } from '../../lib/destination';
+import { getDestinations, type Destination as StrapiDestination } from '../../lib/destination';
 
 type Props = {
     destinations: StrapiDestination[];
@@ -39,9 +39,10 @@ const DestinationsPage: NextPage<Props> = ({ destinations }) => {
 
 export default DestinationsPage;
 
-export async function getStaticProps() {
+export const getStaticProps: GetStaticProps<Props> = async () => {
     const destinations = await getDestinations(true);
     return {
         props: { destinations },
+        revalidate: 60,
     };
-}
+};

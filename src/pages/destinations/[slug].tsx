@@ -1,4 +1,4 @@
-import type { GetStaticProps, NextPage } from 'next';
+import type { GetStaticPaths, GetStaticProps, NextPage } from 'next';
 import Link from 'next/link';
 import invariant from 'tiny-invariant';
 import Tour from '../../components/Tour';
@@ -12,7 +12,7 @@ const DestinationPage: NextPage<Props> = ({ destination }) => {
     return (
         <div className="mx-auto flex flex-col items-center">
             <div
-                className="mx-auto flex w-full flex-col items-center justify-center bg-center py-40 shadow-xl"
+                className="mx-auto flex w-full flex-col items-center justify-center bg-cover bg-center py-40 shadow-xl"
                 style={{ backgroundImage: `url(${destination.bannerImage})` }}
             >
                 <h1 className="text-5xl font-semibold text-white">
@@ -42,6 +42,7 @@ export const getStaticProps: GetStaticProps<Props> = async ({ params }) => {
     if (destination) {
         return {
             props: { destination },
+            revalidate: 60,
         };
     } else {
         return {
@@ -50,10 +51,10 @@ export const getStaticProps: GetStaticProps<Props> = async ({ params }) => {
     }
 };
 
-export async function getStaticPaths() {
+export const getStaticPaths: GetStaticPaths = async () => {
     const destinations = await getDestinations();
     return {
         paths: destinations.map((dst) => ({ params: { slug: dst.slug } })),
-        fallback: false,
+        fallback: 'blocking',
     };
-}
+};

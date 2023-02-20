@@ -14,7 +14,7 @@ const Home: NextPage<Props> = ({ destinations }) => {
             <Head>
                 <title>Fantasy Trip</title>
                 <meta name="description" content="A fantasy tour booking app" />
-                <link rel="icon" href="/favicon.ico" />
+                <link rel="icon" href="/img/baloon.png" />
             </Head>
             <main className="min-h-screen">
                 <div className="flex w-full flex-col items-center justify-center bg-[url('/img/home-banner.jpg')] py-28">

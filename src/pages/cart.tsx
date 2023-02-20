@@ -100,9 +100,7 @@ const CartPage: NextPage<Props> = ({ customer, cart: initCart }) => {
     const { data: cart, mutate } = useMyCart(initCart);
     const itemAvailability = api.useQueries((t) => {
         const cartItems = cart?.items ?? [];
-        return cartItems.map((item) =>
-            t.booking.isAvailable({ tour: item.tour.slug, start: item.date }, { refetchInterval: 10000 })
-        );
+        return cartItems.map((item) => t.booking.isAvailable({ tour: item.tour.slug, start: item.date }));
     });
 
     const allAvailable = itemAvailability.every((x) => x.data !== false);

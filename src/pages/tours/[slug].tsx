@@ -3,7 +3,7 @@
 import { createId } from '@paralleldrive/cuid2';
 import dayjs from 'dayjs';
 import Cookies from 'js-cookie';
-import type { GetStaticProps, NextPage } from 'next';
+import type { GetStaticPaths, GetStaticProps, NextPage } from 'next';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
@@ -56,6 +56,7 @@ const TourPage: NextPage<Props> = ({ tour }) => {
     const { data: cartItem } = loadCartItem({ where: { id: cartItemId } }, { disabled: !cartItemId });
     const { data: me, customerId, isLoading: loadingCustomer } = useCurrentCustomer();
     const { data: occupiedDates } = api.booking.getOccupiedDates.useQuery({ tour: tour.slug });
+    const [submitting, setSubmitting] = useState(false);
 
     const selectedDate = watch('date');
     const notAvailable = !!occupiedDates?.dates.find(
@@ -99,72 +100,77 @@ const TourPage: NextPage<Props> = ({ tour }) => {
     }, [occupiedDates]);
 
     const onSubmitCart: SubmitHandler<Inputs> = async (data) => {
-        const customer = { firstName: data.firstName, lastName: data.lastName, email: data.email };
-        const item = {
-            tour: tour.slug,
-            date: dayjs(data.date).toDate(),
-            quantity: data.quantity,
-        };
+        setSubmitting(true);
+        try {
+            const customer = { firstName: data.firstName, lastName: data.lastName, email: data.email };
+            const item = {
+                tour: tour.slug,
+                date: dayjs(data.date).toDate(),
+                quantity: data.quantity,
+            };
 
-        if (me && cartItem) {
-            console.log('Updating cart', cartItemId, 'cusomer:', customer, 'item:', item);
+            if (me && cartItem) {
+                console.log('Updating cart', cartItemId, 'cusomer:', customer, 'item:', item);
 
-            // update customer
-            await updateCustomer({
-                where: { id: me.id },
-                data: customer,
-            });
-
-            // update cart item
-            await updateCartItem({
-                where: { id: cartItemId },
-                data: item,
-            });
-        } else {
-            console.log('Adding cart, customer:', customer, 'item:', item);
-
-            if (me) {
                 // update customer
                 await updateCustomer({
                     where: { id: me.id },
                     data: customer,
                 });
 
-                // update customer's cart
-                await upsertCart({
-                    where: {
-                        customerId: me.id,
-                    },
-                    create: {
-                        customer: {
-                            connect: { id: me.id },
-                        },
-                        items: {
-                            create: item,
-                        },
-                    },
-                    update: {
-                        items: {
-                            create: item,
-                        },
-                    },
+                // update cart item
+                await updateCartItem({
+                    where: { id: cartItemId },
+                    data: item,
                 });
             } else {
-                // create a new customer and cart
-                const customerId = createId();
-                await createCart({
-                    data: {
-                        customer: {
-                            create: { id: customerId, ...customer },
-                        },
-                        items: {
-                            create: item,
-                        },
-                    },
-                });
+                console.log('Adding cart, customer:', customer, 'item:', item);
 
-                Cookies.set(CUSTOMER_ID_COOKIE, customerId, { expires: 365, path: '/' });
+                if (me) {
+                    // update customer
+                    await updateCustomer({
+                        where: { id: me.id },
+                        data: customer,
+                    });
+
+                    // update customer's cart
+                    await upsertCart({
+                        where: {
+                            customerId: me.id,
+                        },
+                        create: {
+                            customer: {
+                                connect: { id: me.id },
+                            },
+                            items: {
+                                create: item,
+                            },
+                        },
+                        update: {
+                            items: {
+                                create: item,
+                            },
+                        },
+                    });
+                } else {
+                    // create a new customer and cart
+                    const customerId = createId();
+                    await createCart({
+                        data: {
+                            customer: {
+                                create: { id: customerId, ...customer },
+                            },
+                            items: {
+                                create: item,
+                            },
+                        },
+                    });
+
+                    Cookies.set(CUSTOMER_ID_COOKIE, customerId, { expires: 365, path: '/' });
+                }
             }
+        } finally {
+            setSubmitting(false);
         }
 
         await router.push('/cart');
@@ -282,7 +288,7 @@ const TourPage: NextPage<Props> = ({ tour }) => {
 
                             <input
                                 type="submit"
-                                className="btn-primary btn mt-4"
+                                className={`btn-primary btn mt-4 ${submitting ? 'loading' : ''}`}
                                 value={cartItem ? 'Update cart' : 'Add to cart'}
                                 disabled={notAvailable}
                             />
@@ -303,6 +309,7 @@ export const getStaticProps: GetStaticProps<Props> = async ({ params }) => {
     if (tour) {
         return {
             props: { tour },
+            revalidate: 60,
         };
     } else {
         return {
@@ -311,10 +318,10 @@ export const getStaticProps: GetStaticProps<Props> = async ({ params }) => {
     }
 };
 
-export async function getStaticPaths() {
+export const getStaticPaths: GetStaticPaths = async () => {
     const tours = await getTours();
     return {
         paths: tours.map((tour) => ({ params: { slug: tour.slug } })),
-        fallback: false,
+        fallback: 'blocking',
     };
-}
+};
