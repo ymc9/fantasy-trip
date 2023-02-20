@@ -9,6 +9,7 @@ import invariant from 'tiny-invariant';
 import { useCustomer, useOrder } from '../lib/hooks';
 import { fillOrderTours, useMyOrder, type OrderInfo, type OrderItemInfo } from '../lib/order';
 import { getCustomerDb } from '../server/customer-db';
+import { api } from '../utils/api';
 
 type Inputs = {
     firstName: string;
@@ -37,11 +38,12 @@ const LineItem = ({ item }: { item: OrderItemInfo }) => {
 
 const CheckoutPage: NextPage<Props> = ({ customer, order: initOrder }) => {
     const { data: order, mutate: mutateOrder } = useMyOrder(initOrder);
-    const { update: updateOrder, del: deleteOrder } = useOrder();
+    const { del: deleteOrder } = useOrder();
     const { update: updateCustomer } = useCustomer();
     const { register, handleSubmit } = useForm<Inputs>({
         defaultValues: { firstName: customer?.firstName, lastName: customer?.lastName, email: customer?.email },
     });
+    const completeOrder = api.order.complete.useMutation();
 
     const onSaveContact: SubmitHandler<Inputs> = async (data) => {
         invariant(customer);
@@ -65,15 +67,9 @@ const CheckoutPage: NextPage<Props> = ({ customer, order: initOrder }) => {
         return order.items.reduce((acc, item) => acc + item.tour.price * item.quantity, 0) || 0;
     };
 
-    const setOrderCompleted = async (details: object) => {
+    const setOrderCompleted = async (details: { id: string; status: string }) => {
         invariant(order);
-        await updateOrder({
-            where: { id: order.id },
-            data: {
-                status: OrderStatus.PAID,
-                captureDetails: details,
-            },
-        });
+        await completeOrder.mutateAsync({ orderId: order.id, captureDetails: details });
     };
 
     return (
@@ -130,7 +126,7 @@ const CheckoutPage: NextPage<Props> = ({ customer, order: initOrder }) => {
                         <PayPalButtons
                             className="mt-4"
                             style={{ layout: 'horizontal', label: 'checkout', tagline: false, height: 40 }}
-                            createOrder={(data, actions) => {
+                            createOrder={(_, actions) => {
                                 console.log('Creating Paypal order:', getOrderTotal());
                                 return actions.order.create({
                                     purchase_units: [
@@ -142,7 +138,7 @@ const CheckoutPage: NextPage<Props> = ({ customer, order: initOrder }) => {
                                     ],
                                 });
                             }}
-                            onApprove={async (data, actions) => {
+                            onApprove={async (_, actions) => {
                                 const details = await actions.order?.capture();
                                 if (details && details.status === 'COMPLETED') {
                                     console.log('Payment captures successfully:', details);

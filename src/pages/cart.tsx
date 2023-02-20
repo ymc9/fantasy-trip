@@ -1,5 +1,4 @@
 import { OrderStatus, type Customer } from '@prisma/client';
-import { withPresets } from '@zenstackhq/runtime';
 import dayjs from 'dayjs';
 import type { GetServerSideProps, NextPage } from 'next';
 import Image from 'next/image';
@@ -9,11 +8,9 @@ import pluralize from 'pluralize';
 import { useState } from 'react';
 import invariant from 'tiny-invariant';
 import { fillCartTours, useMyCart, type CartInfo, type CartItemInfo } from '../lib/cart';
-import { CUSTOMER_ID_COOKIE } from '../lib/customer';
 import { useCartItem, useCustomer, useOrder } from '../lib/hooks';
 import { fillOrderTours, type OrderInfo } from '../lib/order';
 import { getCustomerDb } from '../server/customer-db';
-import { prisma } from '../server/db';
 
 function CartItem({ item, onChange }: { item: CartItemInfo; onChange?: (item: CartItemInfo) => void }) {
     const { del: removeItem } = useCartItem();

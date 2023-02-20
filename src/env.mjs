@@ -16,6 +16,9 @@ const server = z.object({
         // VERCEL_URL doesn't include `https` so it cant be validated as a URL
         process.env.VERCEL ? z.string().min(1) : z.string().url()
     ),
+    CAL_COM_API_KEY: z.string(),
+    PAYPAL_CLIENT_SECRET: z.string(),
+    PAYPAL_API_ENDPOINT: z.string(),
 });
 
 /**
@@ -40,6 +43,9 @@ const processEnv = {
     NEXTAUTH_URL: process.env.NEXTAUTH_URL,
     NEXT_PUBLIC_STRAPI_API_URL: process.env.NEXT_PUBLIC_STRAPI_API_URL,
     NEXT_PUBLIC_PAYPAL_CLIENT_ID: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID,
+    CAL_COM_API_KEY: process.env.CAL_COM_API_KEY,
+    PAYPAL_CLIENT_SECRET: process.env.PAYPAL_CLIENT_SECRET,
+    PAYPAL_API_ENDPOINT: process.env.PAYPAL_API_ENDPOINT,
 };
 
 // Don't touch the part below

@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import Image from 'next/image';
+import Logo from '../../public/img/logo-full.png';
 
 export default function Navbar() {
     const navItems = [
@@ -56,7 +58,7 @@ export default function Navbar() {
                     </ul>
                 </div>
                 <Link href="/" className="text-xl font-semibold normal-case">
-                    FantasyTrip
+                    <Image src={Logo} alt="logo" height={40} />
                 </Link>
             </div>
             <div className="navbar-center hidden lg:flex">

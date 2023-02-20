@@ -104,6 +104,7 @@ model Session {
     user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+// Staff user
 model User {
     id String @id @default(cuid())
     name String?
