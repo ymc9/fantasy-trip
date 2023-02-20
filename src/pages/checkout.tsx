@@ -190,6 +190,12 @@ const CheckoutPage: NextPage<Props> = ({ customer, cart }) => {
                                 </Link>{' '}
                             </div>
                         )}
+
+                        <div className="italic">
+                            PayPal sandbox account
+                            <p>sb-4qwp825107022@personal.example.com</p>
+                            <p>pwd: abcd1234</p>
+                        </div>
                     </div>
                 </div>
             ) : (
