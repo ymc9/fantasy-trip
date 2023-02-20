@@ -1,13 +1,14 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
 import { PayPalButtons } from '@paypal/react-paypal-js';
-import { OrderStatus, type Customer } from '@prisma/client';
+import { type Customer } from '@prisma/client';
 import dayjs from 'dayjs';
 import type { GetServerSideProps, NextPage } from 'next';
+import Link from 'next/link';
 import Router from 'next/router';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import invariant from 'tiny-invariant';
-import { useCustomer, useOrder } from '../lib/hooks';
-import { fillOrderTours, useMyOrder, type OrderInfo, type OrderItemInfo } from '../lib/order';
+import { fillCartTours, type CartInfo, type CartItemInfo } from '../lib/cart';
+import { useCustomer } from '../lib/hooks';
 import { getCustomerDb } from '../server/customer-db';
 import { api } from '../utils/api';
 
@@ -19,10 +20,10 @@ type Inputs = {
 
 type Props = {
     customer: Customer | null;
-    order: OrderInfo | null;
+    cart: CartInfo | null;
 };
 
-const LineItem = ({ item }: { item: OrderItemInfo }) => {
+const LineItem = ({ item }: { item: CartItemInfo }) => {
     return (
         <div className="flex flex-col gap-1">
             <div className="text-sm font-semibold">{item.tour.name}</div>
@@ -36,14 +37,22 @@ const LineItem = ({ item }: { item: OrderItemInfo }) => {
     );
 };
 
-const CheckoutPage: NextPage<Props> = ({ customer, order: initOrder }) => {
-    const { data: order, mutate: mutateOrder } = useMyOrder(initOrder);
-    const { del: deleteOrder } = useOrder();
+const CheckoutPage: NextPage<Props> = ({ customer, cart }) => {
     const { update: updateCustomer } = useCustomer();
     const { register, handleSubmit } = useForm<Inputs>({
         defaultValues: { firstName: customer?.firstName, lastName: customer?.lastName, email: customer?.email },
     });
-    const completeOrder = api.order.complete.useMutation();
+    const createOrder = api.order.create.useMutation().mutateAsync;
+
+    // batck query for polling availability of cart items
+    const itemAvailability = api.useQueries((t) => {
+        const cartItems = cart?.items ?? [];
+        return cartItems.map((item) =>
+            t.booking.isAvailable({ tour: item.tour.slug, start: item.date }, { refetchInterval: 10000 })
+        );
+    });
+
+    const allAvailable = itemAvailability.every((x) => x.data);
 
     const onSaveContact: SubmitHandler<Inputs> = async (data) => {
         invariant(customer);
@@ -51,33 +60,46 @@ const CheckoutPage: NextPage<Props> = ({ customer, order: initOrder }) => {
             where: { id: customer?.id },
             data,
         });
-        await mutateOrder();
-    };
-
-    const onDiscardOrder = async () => {
-        invariant(order);
-        await deleteOrder({ where: { id: order.id } });
-        await Router.push('/tours');
     };
 
     const getOrderTotal = () => {
-        if (!order) {
+        if (!cart) {
             return 0;
         }
-        return order.items.reduce((acc, item) => acc + item.tour.price * item.quantity, 0) || 0;
+        return cart.items.reduce((acc, item) => acc + item.tour.price * item.quantity, 0) || 0;
     };
 
-    const setOrderCompleted = async (details: { id: string; status: string }) => {
-        invariant(order);
-        await completeOrder.mutateAsync({ orderId: order.id, captureDetails: details });
+    const captureOrder = async (details: { id: string; status: string }) => {
+        invariant(customer);
+        invariant(cart);
+
+        const order = await createOrder({
+            customerId: customer.id,
+            items: cart.items.map((item) => ({
+                tour: item.tour.slug,
+                date: item.date,
+                quantity: item.quantity,
+            })),
+            captureDetails: details,
+        });
+        console.log('Created order:', order);
+
+        // empty cart
+        await updateCustomer({
+            where: { id: customer?.id },
+            data: {
+                cart: {
+                    delete: true,
+                },
+            },
+        });
     };
 
     return (
         <div className="container mx-auto flex w-full flex-col py-16">
             <h1 className="text-3xl font-semibold">Checkout</h1>
             <div className="divider"></div>
-
-            {order && (
+            {customer && cart ? (
                 <div className="flex items-start justify-center gap-8">
                     <div className="flex w-96 flex-col rounded-lg border p-8">
                         <h2 className="mb-4 text-2xl font-semibold">Contact Information</h2>
@@ -118,7 +140,7 @@ const CheckoutPage: NextPage<Props> = ({ customer, order: initOrder }) => {
                             <p className="text-2xl font-semibold text-orange-500">${getOrderTotal()}</p>
                         </div>
                         <div className="flex flex-col gap-2">
-                            {order.items.map((item) => (
+                            {cart.items.map((item) => (
                                 <LineItem key={item.id} item={item} />
                             ))}
                         </div>
@@ -126,7 +148,17 @@ const CheckoutPage: NextPage<Props> = ({ customer, order: initOrder }) => {
                         <PayPalButtons
                             className="mt-4"
                             style={{ layout: 'horizontal', label: 'checkout', tagline: false, height: 40 }}
-                            createOrder={(_, actions) => {
+                            disabled={!allAvailable}
+                            onClick={async (_, actions) => {
+                                if (!allAvailable) {
+                                    alert('Some of the tours are not available anymore. Please check your cart.');
+                                    await actions.reject();
+                                    await Router.push('/cart');
+                                } else {
+                                    await actions.resolve();
+                                }
+                            }}
+                            createOrder={async (_, actions) => {
                                 console.log('Creating Paypal order:', getOrderTotal());
                                 return actions.order.create({
                                     purchase_units: [
@@ -142,7 +174,7 @@ const CheckoutPage: NextPage<Props> = ({ customer, order: initOrder }) => {
                                 const details = await actions.order?.capture();
                                 if (details && details.status === 'COMPLETED') {
                                     console.log('Payment captures successfully:', details);
-                                    await setOrderCompleted(details);
+                                    await captureOrder(details);
                                     await Router.push('/thankyou');
                                 } else {
                                     alert('Something went wrong during the payment process. Please try again.');
@@ -150,10 +182,22 @@ const CheckoutPage: NextPage<Props> = ({ customer, order: initOrder }) => {
                             }}
                         />
 
-                        <button className="btn-outline btn" onClick={onDiscardOrder}>
-                            Discard Order
-                        </button>
+                        {!allAvailable && (
+                            <div>
+                                <p className="text-red-700">Some tours are not available anymore.</p>
+                                <Link href="/cart" className="underline">
+                                    Check your cart
+                                </Link>{' '}
+                            </div>
+                        )}
                     </div>
+                </div>
+            ) : (
+                <div>
+                    You cart is empty. Explore our{' '}
+                    <Link href="/tours" className="underline">
+                        best selling tours.
+                    </Link>
                 </div>
             )}
         </div>
@@ -166,12 +210,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req }) => 
     const db = getCustomerDb(req);
     const r = await db.customer.findFirst({
         include: {
-            orders: {
-                include: { items: true },
-                where: { status: OrderStatus.DRAFT },
-                orderBy: { createdAt: 'desc' },
-                take: 1,
-            },
+            cart: { include: { items: true } },
         },
     });
 
@@ -179,13 +218,13 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req }) => 
         return { props: { customer: null, cart: null, order: null } };
     }
 
-    const { orders, ...customer } = r;
+    const { cart, ...customer } = r;
+    const cartInfo = cart && (await fillCartTours(cart));
 
-    const orderInfo = orders[0] ? await fillOrderTours(orders[0]) : null;
     return {
         props: {
             customer,
-            order: orderInfo,
+            cart: cartInfo,
         },
     };
 };

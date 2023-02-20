@@ -17,6 +17,7 @@ const server = z.object({
         process.env.VERCEL ? z.string().min(1) : z.string().url()
     ),
     CAL_COM_API_KEY: z.string(),
+    CAL_COM_USERNAME: z.string(),
     PAYPAL_CLIENT_SECRET: z.string(),
     PAYPAL_API_ENDPOINT: z.string(),
 });
@@ -44,6 +45,7 @@ const processEnv = {
     NEXT_PUBLIC_STRAPI_API_URL: process.env.NEXT_PUBLIC_STRAPI_API_URL,
     NEXT_PUBLIC_PAYPAL_CLIENT_ID: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID,
     CAL_COM_API_KEY: process.env.CAL_COM_API_KEY,
+    CAL_COM_USERNAME: process.env.CAL_COM_USERNAME,
     PAYPAL_CLIENT_SECRET: process.env.PAYPAL_CLIENT_SECRET,
     PAYPAL_API_ENDPOINT: process.env.PAYPAL_API_ENDPOINT,
 };

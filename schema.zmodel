@@ -75,6 +75,8 @@ model OrderItem {
     quantity Int
     order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
     orderId String
+    // cal.com booking id
+    bookingId Int?
     @@allow('create,read', auth() == order.customer)
 }
 

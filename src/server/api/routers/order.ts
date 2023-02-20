@@ -1,7 +1,10 @@
 import { OrderStatus } from '@prisma/client';
 import { TRPCError } from '@trpc/server';
+import dayjs from 'dayjs';
 import invariant from 'tiny-invariant';
 import { z } from 'zod';
+import { createBooking, getEventTypeForSlug } from '../../../lib/cal-com';
+import { getTour } from '../../../lib/tour';
 import { prisma } from '../../db';
 import { createTRPCRouter, publicProcedure } from '../trpc';
 
@@ -15,17 +18,18 @@ const paypalAuth = `Basic ${Buffer.from(
 ).toString('base64')}`;
 
 export const orderRouter = createTRPCRouter({
-    // complete an order
-    complete: publicProcedure
+    // create an order
+    create: publicProcedure
         .input(
             z.object({
-                orderId: z.string(),
+                customerId: z.string(),
+                items: z.array(z.object({ tour: z.string(), date: z.date(), quantity: z.number().positive() })),
                 captureDetails: z.object({ id: z.string(), status: z.string() }),
             })
         )
         .mutation(async ({ input }) => {
             // fetch order from paypal to check if it's completed
-            // TODO: should check payment amout as well
+            // TODO: should check payment amount as well
             const r = await fetch(`${paypalEndpoint}/v2/checkout/orders/${input.captureDetails.id}`, {
                 headers: {
                     Authorization: paypalAuth,
@@ -36,15 +40,61 @@ export const orderRouter = createTRPCRouter({
             console.log('Paypal order data', data);
 
             if (data.status === 'COMPLETED') {
-                // mark order completed
-                console.log('Marking order PAID', input.orderId);
-                await prisma.order.update({
-                    where: { id: input.orderId },
+                const order = await prisma.order.create({
+                    include: { customer: true, items: true },
                     data: {
+                        customer: { connect: { id: input.customerId } },
+                        items: {
+                            create: input.items,
+                        },
                         status: OrderStatus.PAID,
                         captureDetails: data,
                     },
                 });
+                console.log('Created order:', order);
+
+                await Promise.all(
+                    order.items.map(async (item) => {
+                        const tour = await getTour(item.tour, true);
+                        if (!tour) {
+                            throw new TRPCError({
+                                code: 'BAD_REQUEST',
+                                message: `Tour not found for slug ${item.tour}`,
+                            });
+                        }
+                        invariant(tour.destination);
+
+                        const eventType = await getEventTypeForSlug(item.tour);
+                        if (!eventType) {
+                            throw new TRPCError({
+                                code: 'BAD_REQUEST',
+                                message: `Event type not found for tour ${item.tour}`,
+                            });
+                        }
+
+                        const booking = await createBooking({
+                            eventTypeId: eventType.id,
+                            name: `${order.customer.firstName} ${order.customer.lastName}`,
+                            email: order.customer.email,
+                            start: dayjs(item.date).toString(),
+                            end: dayjs(item.date).add(tour.duration, 'hours').toString(),
+                            description: `Booking for tour ${tour.name}`,
+                            location: `${tour.destination.city} ${tour.destination.country}`,
+                        });
+                        console.log(`Created booking: ${JSON.stringify(booking)}`);
+
+                        await prisma.orderItem.update({
+                            where: {
+                                id: item.id,
+                            },
+                            data: {
+                                bookingId: booking.id,
+                            },
+                        });
+                    })
+                );
+
+                return order;
             } else {
                 throw new TRPCError({
                     code: 'BAD_REQUEST',

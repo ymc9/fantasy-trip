@@ -7,15 +7,18 @@ import type { GetStaticProps, NextPage } from 'next';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
-import { useForm, type SubmitHandler } from 'react-hook-form';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import { Controller, useForm, type SubmitHandler } from 'react-hook-form';
 import { FaRegClock } from 'react-icons/fa';
 import ReactMarkdown from 'react-markdown';
 import { Carousel } from 'react-responsive-carousel';
 import 'react-responsive-carousel/lib/styles/carousel.min.css';
 import invariant from 'tiny-invariant';
-import { CUSTOMER_ID_COOKIE } from '../../lib/customer';
+import { CUSTOMER_ID_COOKIE, useCurrentCustomer } from '../../lib/customer';
 import { useCart, useCartItem, useCustomer } from '../../lib/hooks';
 import { getTour, getTours, type Tour as StrapiTour } from '../../lib/tour';
+import { api } from '../../utils/api';
 
 type Props = {
     tour: StrapiTour;
@@ -37,30 +40,27 @@ const TourPage: NextPage<Props> = ({ tour }) => {
         reset: resetForm,
         getValues: getFormValues,
         handleSubmit,
+        control,
+        watch,
     } = useForm<Inputs>({
         defaultValues: {
             quantity: 1,
-            date: dayjs().add(1, 'day').format('YYYY-MM-DD'),
         },
     });
 
     const router = useRouter();
-    const [customerId, setCustomerId] = useState('');
     const [cartItemId, setCartItemId] = useState('');
-
-    const { findUnique: loadCustomer, update: updateCustomer } = useCustomer();
+    const { update: updateCustomer } = useCustomer();
     const { upsert: upsertCart, create: createCart } = useCart();
     const { findUnique: loadCartItem, update: updateCartItem } = useCartItem();
-
     const { data: cartItem } = loadCartItem({ where: { id: cartItemId } }, { disabled: !cartItemId });
-    const { data: me, isLoading: loadingMe } = loadCustomer({ where: { id: customerId } }, { disabled: !customerId });
+    const { data: me, customerId, isLoading: loadingCustomer } = useCurrentCustomer();
+    const { data: occupiedDates } = api.booking.getOccupiedDates.useQuery({ tour: tour.slug });
 
-    useEffect(() => {
-        const cid = Cookies.get(CUSTOMER_ID_COOKIE);
-        if (cid) {
-            setCustomerId(cid);
-        }
-    }, []);
+    const selectedDate = watch('date');
+    const notAvailable = !!occupiedDates?.dates.find(
+        (d) => dayjs(d).format('YYYY-MM-DD') === dayjs(selectedDate).format('YYYY-MM-DD')
+    );
 
     useEffect(() => {
         if (router.query.cartRef) {
@@ -70,19 +70,22 @@ const TourPage: NextPage<Props> = ({ tour }) => {
     }, [router]);
 
     useEffect(() => {
-        if (customerId && !loadingMe) {
+        if (customerId && !loadingCustomer) {
             if (me) {
+                // load customer contact into form
                 console.log('Customer loaded:', me);
                 resetForm({ ...getFormValues(), firstName: me.firstName, lastName: me.lastName, email: me.email });
             } else {
+                // customer not found, remove cookie
                 console.log('Removing customer id cookie');
                 Cookies.remove(CUSTOMER_ID_COOKIE);
             }
         }
-    }, [resetForm, getFormValues, me, loadingMe, customerId]);
+    }, [resetForm, getFormValues, me, loadingCustomer, customerId]);
 
     useEffect(() => {
         if (cartItem) {
+            // editing a cart item
             resetForm({
                 ...getFormValues(),
                 quantity: cartItem.quantity,
@@ -90,6 +93,10 @@ const TourPage: NextPage<Props> = ({ tour }) => {
             });
         }
     }, [cartItem, resetForm, getFormValues]);
+
+    useEffect(() => {
+        console.log('Blocked dates:', occupiedDates);
+    }, [occupiedDates]);
 
     const onSubmitCart: SubmitHandler<Inputs> = async (data) => {
         const customer = { firstName: data.firstName, lastName: data.lastName, email: data.email };
@@ -244,12 +251,23 @@ const TourPage: NextPage<Props> = ({ tour }) => {
                             <label className="label">
                                 <span className="label-text">Date</span>
                             </label>
-                            <input
-                                type="date"
-                                required
-                                className="input-bordered input input-sm w-full max-w-xs"
-                                {...register('date')}
+
+                            <Controller
+                                control={control}
+                                name="date"
+                                render={({ field }) => (
+                                    <DatePicker
+                                        className="input-bordered input input-sm w-full max-w-xs"
+                                        placeholderText="Select tour date"
+                                        onChange={(date) => field.onChange(date)}
+                                        selected={field.value ? dayjs(field.value).toDate() : undefined}
+                                        excludeDates={occupiedDates?.dates}
+                                        minDate={dayjs().add(1, 'days').toDate()}
+                                    />
+                                )}
                             />
+
+                            {notAvailable && <p className="mt-1 text-sm text-red-700">Not available for the day</p>}
 
                             <label className="label">
                                 <span className="label-text"># Adult</span>
@@ -266,6 +284,7 @@ const TourPage: NextPage<Props> = ({ tour }) => {
                                 type="submit"
                                 className="btn-primary btn mt-4"
                                 value={cartItem ? 'Update cart' : 'Add to cart'}
+                                disabled={notAvailable}
                             />
                         </form>
                     </div>

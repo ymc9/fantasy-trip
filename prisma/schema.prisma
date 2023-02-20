@@ -88,6 +88,7 @@ model OrderItem {
     quantity Int
     order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
     orderId String
+    bookingId Int?
     zenstack_guard Boolean @default(true)
     zenstack_transaction String?
     @@index([zenstack_transaction])

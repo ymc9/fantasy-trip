@@ -1,3 +1,4 @@
+import { bookingRouter } from './routers/booking';
 import { orderRouter } from './routers/order';
 import { createTRPCRouter } from './trpc';
 
@@ -8,6 +9,7 @@ import { createTRPCRouter } from './trpc';
  */
 export const appRouter = createTRPCRouter({
     order: orderRouter,
+    booking: bookingRouter,
 });
 
 // export type definition of API

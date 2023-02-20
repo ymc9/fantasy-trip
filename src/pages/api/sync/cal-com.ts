@@ -25,13 +25,9 @@ const handler: NextApiHandler = async (req, res) => {
                 await updateEventType(eventType.id, {
                     title: tour.name,
                     length: tour.duration * 60,
-                    requiresConfirmation: true,
                     locations: [
                         { address: `${tour.destination?.city} ${tour.destination?.country}`, type: 'inPerson' },
                     ],
-                    metadata: {
-                        tourId: tour.id,
-                    },
                 });
                 updated.push(tour.slug);
             } else {
@@ -39,7 +35,6 @@ const handler: NextApiHandler = async (req, res) => {
                 await createEventType({
                     title: tour.name,
                     slug: tour.slug,
-                    requiresConfirmation: true,
                     length: tour.duration * 60,
                     locations: [
                         { address: `${tour.destination?.city} ${tour.destination?.country}`, type: 'inPerson' },

@@ -6,13 +6,20 @@ import Link from 'next/link';
 import Router from 'next/router';
 import pluralize from 'pluralize';
 import { useState } from 'react';
-import invariant from 'tiny-invariant';
 import { fillCartTours, useMyCart, type CartInfo, type CartItemInfo } from '../lib/cart';
-import { useCartItem, useCustomer, useOrder } from '../lib/hooks';
-import { fillOrderTours, type OrderInfo } from '../lib/order';
+import { useCartItem } from '../lib/hooks';
 import { getCustomerDb } from '../server/customer-db';
+import { api } from '../utils/api';
 
-function CartItem({ item, onChange }: { item: CartItemInfo; onChange?: (item: CartItemInfo) => void }) {
+function CartItem({
+    item,
+    available,
+    onChange,
+}: {
+    item: CartItemInfo;
+    available: boolean;
+    onChange?: (item: CartItemInfo) => void;
+}) {
     const { del: removeItem } = useCartItem();
     const [changing, setChanging] = useState(false);
 
@@ -40,6 +47,7 @@ function CartItem({ item, onChange }: { item: CartItemInfo; onChange?: (item: Ca
                             src={item.tour.images[0]}
                             fill={true}
                             alt={item.tour.name}
+                            priority
                         />
                     </Link>
                 )}
@@ -49,7 +57,14 @@ function CartItem({ item, onChange }: { item: CartItemInfo; onChange?: (item: Ca
                     <h2>{item.tour.name}</h2>
                 </Link>
                 <div className="flex flex-col gap-1 text-sm text-gray-600">
-                    <p>{dayjs(item.date).format('YYYY-MM-DD')}</p>
+                    <div>
+                        <span className={!available ? 'line-through' : ''}>
+                            {dayjs(item.date).format('YYYY-MM-DD')}{' '}
+                        </span>
+                        {!available && (
+                            <span className="ml-2 font-semibold text-red-700">Not available on the day</span>
+                        )}
+                    </div>
                     <div className="flex justify-between">
                         <p>
                             # Adult: {item.quantity} (${item.tour.price}/pp)
@@ -79,45 +94,25 @@ function CartItem({ item, onChange }: { item: CartItemInfo; onChange?: (item: Ca
 type Props = {
     customer: Customer | null;
     cart: CartInfo | null;
-    order: OrderInfo | null;
 };
 
-const CartPage: NextPage<Props> = ({ customer, cart: initCart, order }) => {
+const CartPage: NextPage<Props> = ({ customer, cart: initCart }) => {
     const { data: cart, mutate } = useMyCart(initCart);
-    const { update: updateCustomer } = useCustomer();
-    const { create: createOrder } = useOrder();
+    const itemAvailability = api.useQueries((t) => {
+        const cartItems = cart?.items ?? [];
+        return cartItems.map((item) =>
+            t.booking.isAvailable({ tour: item.tour.slug, start: item.date }, { refetchInterval: 10000 })
+        );
+    });
+
+    const allAvailable = itemAvailability.every((x) => x.data !== false);
+    const availabilityLoading = itemAvailability.some((x) => x.isLoading);
 
     async function onItemChange() {
         await mutate();
     }
 
     async function onCheckout() {
-        invariant(customer);
-        invariant(cart);
-
-        // create order
-        await createOrder({
-            data: {
-                customer: { connect: { id: customer.id } },
-                items: {
-                    create: cart.items.map((item) => ({
-                        tour: item.tour.slug,
-                        date: item.date,
-                        quantity: item.quantity,
-                    })),
-                },
-                status: OrderStatus.DRAFT,
-            },
-        });
-
-        // empty cart
-        await updateCustomer({
-            where: { id: customer.id },
-            data: {
-                cart: { delete: true },
-            },
-        });
-
         await Router.push('/checkout');
     }
 
@@ -129,8 +124,13 @@ const CartPage: NextPage<Props> = ({ customer, cart: initCart, order }) => {
             {customer && cart && cart.items.length > 0 ? (
                 <div className="mx-auto mt-12 flex items-start justify-center gap-4">
                     <div className="flex flex-col items-center gap-4">
-                        {cart.items.map((item) => (
-                            <CartItem key={item.id} item={item} onChange={() => void onItemChange()} />
+                        {cart.items.map((item, i) => (
+                            <CartItem
+                                key={item.id}
+                                item={item}
+                                available={itemAvailability[i]?.data !== false}
+                                onChange={() => void onItemChange()}
+                            />
                         ))}
                     </div>
                     <div className="self-grow flex flex-col gap-4 rounded-lg border py-4 px-8 shadow-lg">
@@ -141,21 +141,19 @@ const CartPage: NextPage<Props> = ({ customer, cart: initCart, order }) => {
                             </p>
                         </div>
                         <div className="flex flex-col gap-2">
-                            <button className="btn-primary btn-wide btn" onClick={() => void onCheckout()}>
+                            <button
+                                className={`btn-primary btn-wide btn ${availabilityLoading ? 'loading' : ''}`}
+                                onClick={() => void onCheckout()}
+                                disabled={!allAvailable}
+                            >
                                 Checkout Now
                             </button>
                             <Link href="/tours">
                                 <button className="btn-outline btn-wide btn">See More Tours</button>
                             </Link>
                         </div>
+                        {!allAvailable && <p className="text-red-700">Some tours are not available.</p>}
                     </div>
-                </div>
-            ) : order ? (
-                <div>
-                    <div className="mb-4">You have an order pending payment. </div>
-                    <Link href="/checkout" className="btn-primary btn">
-                        Go to checkout
-                    </Link>
                 </div>
             ) : (
                 <div>
@@ -189,15 +187,12 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req }) => 
         return { props: { customer: null, cart: null, order: null } };
     }
 
-    const { cart, orders, ...customer } = r;
-
+    const { cart, ...customer } = r;
     const cartInfo = cart && (await fillCartTours(cart));
-    const orderInfo = orders[0] ? await fillOrderTours(orders[0]) : null;
     return {
         props: {
             customer,
             cart: cartInfo,
-            order: orderInfo,
         },
     };
 };

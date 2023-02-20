@@ -45,6 +45,9 @@ export function decodeImage(payload: StrapiResponsePayload) {
 
 export async function fetchStrapi(path: string) {
     const res = await fetch(`${strapiUrl}${path}`);
+    if (!res.ok) {
+        throw new Error(`Failed to fetch strapi: ${await res.text()}}`);
+    }
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const { data }: StrapiBatchResponse = await res.json();
     return data;

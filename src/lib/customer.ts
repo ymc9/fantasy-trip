@@ -14,5 +14,5 @@ export function useCurrentCustomer() {
     }, []);
 
     const { findUnique } = useCustomer();
-    return findUnique({ where: { id: customerId } }, { disabled: !customerId });
+    return { ...findUnique({ where: { id: customerId } }, { disabled: !customerId }), customerId };
 }
